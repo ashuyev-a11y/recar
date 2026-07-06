@@ -8,12 +8,21 @@
 //   TELEGRAM_CHAT_ID   — id группы (например -5373399519)
 //   WEBHOOK_SECRET     — случайная строка; её же кладём в заголовок вебхука
 //
+// SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase отдаёт функции сам
+// (встроенные переменные) — нужны, чтобы сделать временные подписанные
+// ссылки на фото из приватного бакета и отправить их в Telegram.
+//
 // ПДн не логируем: в консоль пишем только имя таблицы и статус Telegram.
 // ------------------------------------------------------------------
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
 const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+const PHOTOS_BUCKET = "lead-photos";
+const SIGNED_TTL = 3600; // сек — на скачивание Telegram и короткий просмотр по ссылке
 
 // Экранируем для HTML-режима Telegram, чтобы <, >, & не ломали сообщение.
 function esc(v: unknown): string {
@@ -68,6 +77,71 @@ function buildMessage(table: string, r: Record<string, any>): string {
   return lines.join("\n");
 }
 
+// Вызов Telegram Bot API.
+// deno-lint-ignore no-explicit-any
+async function tg(method: string, body: Record<string, any>) {
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, ok: res.ok };
+}
+
+// Пути из leads.photo_urls (JSON-массив строк).
+function parsePhotoPaths(v: unknown): string[] {
+  if (!v) return [];
+  try {
+    const arr = JSON.parse(String(v));
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+// Временная подписанная ссылка на файл в приватном бакете.
+async function signedUrl(path: string): Promise<string | null> {
+  if (!SUPABASE_URL || !SERVICE_ROLE) return null;
+  const res = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/sign/${PHOTOS_BUCKET}/${path}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ expiresIn: SIGNED_TTL }),
+    }
+  );
+  if (!res.ok) return null;
+  const j = await res.json();
+  return j?.signedURL ? `${SUPABASE_URL}/storage/v1${j.signedURL}` : null;
+}
+
+// Отправка фото в группу: альбом / одно фото, с фолбэком на ссылки.
+async function sendPhotos(paths: string[]) {
+  const urls = (await Promise.all(paths.map(signedUrl))).filter(
+    (u): u is string => !!u
+  );
+  if (urls.length === 0) return;
+
+  let ok = false;
+  if (urls.length === 1) {
+    ok = (await tg("sendPhoto", { chat_id: CHAT_ID, photo: urls[0] })).ok;
+  } else {
+    ok = (
+      await tg("sendMediaGroup", {
+        chat_id: CHAT_ID,
+        media: urls.map((u) => ({ type: "photo", media: u })),
+      })
+    ).ok;
+  }
+
+  // Фолбэк: если фото не ушли — шлём кликабельные ссылки текстом.
+  if (!ok) {
+    const text = "📷 Фото к заявке:\n" + urls.map((u, i) => `${i + 1}. ${u}`).join("\n");
+    await tg("sendMessage", { chat_id: CHAT_ID, text, disable_web_page_preview: true });
+  }
+  console.log(`photos: ${urls.length}, delivered ${ok ? "album" : "links"}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("method not allowed", { status: 405 });
@@ -96,23 +170,28 @@ Deno.serve(async (req) => {
   }
 
   const table = String(payload.table ?? "");
-  const text = buildMessage(table, payload.record);
+  const record = payload.record;
 
-  const tg = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    }),
+  // 1) текст заявки
+  const text = buildMessage(table, record);
+  const sent = await tg("sendMessage", {
+    chat_id: CHAT_ID,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
   });
+  console.log(`notify ${table}: telegram ${sent.status}`);
 
-  // Лог без ПДн — только таблица и код ответа Telegram.
-  console.log(`notify ${table}: telegram ${tg.status}`);
-  if (!tg.ok) {
-    return new Response("telegram error", { status: 502 });
+  // 2) фото (если приложены) — best-effort, ошибку заявки не роняем
+  const paths = parsePhotoPaths(record.photo_urls);
+  if (paths.length) {
+    try {
+      await sendPhotos(paths);
+    } catch {
+      console.log("photos: send failed");
+    }
   }
+
+  if (!sent.ok) return new Response("telegram error", { status: 502 });
   return new Response("ok", { status: 200 });
 });

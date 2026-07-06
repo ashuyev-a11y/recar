@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import PhotoPicker from "@/components/PhotoPicker";
+import { uploadLeadPhotos } from "@/lib/upload-photos";
 
 const UB = "var(--font-unbounded)";
 const MR = "var(--font-manrope)";
@@ -28,6 +30,7 @@ export default function LeadForm({
   const [carMake, setCarMake] = useState("");
   const [carModel, setCarModel] = useState("");
   const [description, setDescription] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,9 @@ export default function LeadForm({
 
     setLoading(true);
     try {
+      // Сначала грузим фото (если есть) — пути в приватном бакете.
+      const paths = await uploadLeadPhotos(photos);
+
       const supabase = getSupabase();
       const { error: insertError } = await supabase.from("leads").insert({
         name: name.trim() || null,
@@ -69,6 +75,7 @@ export default function LeadForm({
         car_model: carModel.trim() || null,
         service_type: serviceType,
         description: description.trim() || null,
+        photo_urls: paths.length ? JSON.stringify(paths) : null,
         source: "form",
       });
       if (insertError) throw insertError;
@@ -200,6 +207,11 @@ export default function LeadForm({
             outline: "none",
           }}
         />
+      </div>
+
+      {/* Фото повреждений */}
+      <div style={{ margin: "14px 0 0" }}>
+        <PhotoPicker files={photos} onChange={setPhotos} disabled={loading} />
       </div>
 
       {/* Согласие на обработку ПДн — обязательно (Казахстан) */}

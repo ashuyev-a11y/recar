@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { whatsappLink } from "@/lib/site";
+import PhotoPicker from "@/components/PhotoPicker";
+import { uploadLeadPhotos } from "@/lib/upload-photos";
 import {
   priceMap,
   workLabels,
@@ -37,6 +39,7 @@ export default function CalculatorClient() {
   const [phone, setPhone] = useState("");
   const [car, setCar] = useState("");
   const [consent, setConsent] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formSent, setFormSent] = useState(false);
@@ -118,6 +121,9 @@ export default function CalculatorClient() {
     setError(null);
     setLoading(true);
     try {
+      // Сначала грузим фото (если есть) — получаем пути в приватном бакете.
+      const paths = await uploadLeadPhotos(photos);
+
       const supabase = getSupabase();
       const { error: insertError } = await supabase.from("leads").insert({
         name: name.trim() || null,
@@ -125,6 +131,7 @@ export default function CalculatorClient() {
         car_make: car.trim() || null,
         service_type: "Калькулятор кузова",
         description: buildDescription(),
+        photo_urls: paths.length ? JSON.stringify(paths) : null,
         source: "calculator",
       });
       if (insertError) throw insertError;
@@ -697,10 +704,10 @@ export default function CalculatorClient() {
                     <span style={{ font: `800 15px ${MR}`, color: "var(--electric-deep)" }}>{totalFmt}</span>
                   </div>
 
-                  {/* фото — отложено (Storage добавим отдельным шагом) */}
-                  <p style={{ margin: "0 0 16px", font: `500 12px/1.45 ${MR}`, color: "var(--metallic)" }}>
-                    Фото повреждений пока пришли в WhatsApp — так расчёт будет точнее.
-                  </p>
+                  {/* фото повреждений */}
+                  <div style={{ marginBottom: 16 }}>
+                    <PhotoPicker files={photos} onChange={setPhotos} disabled={loading} />
+                  </div>
 
                   <input
                     value={name}
