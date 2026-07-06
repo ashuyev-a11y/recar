@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import ComingSoon from "@/components/ComingSoon";
+import CalculatorClient from "@/components/CalculatorClient";
 
 export const metadata: Metadata = {
-  title: "Калькулятор ремонта — RE:CAR",
+  title: "Калькулятор кузовного ремонта — RE:CAR",
+  description:
+    "Собери свой ремонт: отмечай детали кузова, выбирай операцию и сразу видь предварительную сумму. Точную цену назовём после осмотра.",
 };
 
 export default function CalculatorPage() {
-  return (
-    <ComingSoon
-      eyebrow="калькулятор по схеме кузова"
-      title="посчитаем ремонт по деталям"
-      text="Здесь будет интерактивная схема кузова: отмечаешь повреждённые детали и сразу видишь предварительную сумму. Пока — оставь заявку на главной, и мастер рассчитает по фото."
-    />
-  );
+  return <CalculatorClient />;
 }

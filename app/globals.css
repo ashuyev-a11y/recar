@@ -74,6 +74,107 @@ body {
   }
 }
 
+/* ============================================================
+   Калькулятор — адаптивная раскладка (mobile-first).
+   Инлайн-стили не умеют медиа-запросы, поэтому переключение
+   мобайл/десктоп держим здесь.
+   ============================================================ */
+.calc-container {
+  max-width: 430px;
+  margin: 0 auto;
+}
+.calc-layout {
+  display: flex;
+  flex-direction: column;
+}
+/* Схема кузова: холст 240×340, масштаб 1.1 на телефоне. */
+.calc-scheme-outer {
+  position: relative;
+  width: 264px;
+  height: 374px;
+}
+.calc-scheme-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: scale(1.1);
+  transform-origin: top left;
+}
+/* Показ/скрытие по ширине экрана. */
+.hide-desktop {
+  display: block;
+}
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .calc-container {
+    max-width: 1120px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .calc-layout {
+    flex-direction: row;
+    gap: 36px;
+    align-items: flex-start;
+  }
+  .calc-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .calc-side {
+    flex: none;
+    width: 340px;
+    position: sticky;
+    top: 20px;
+  }
+  .calc-scheme-outer {
+    width: 336px;
+    height: 476px;
+  }
+  .calc-scheme-scale {
+    transform: scale(1.4);
+  }
+  .hide-desktop {
+    display: none !important;
+  }
+  .hide-mobile {
+    display: block;
+  }
+}
+
+/* Форма заявки: шторка снизу на телефоне, окно по центру на десктопе. */
+.calc-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(21, 24, 30, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+.calc-form-panel {
+  width: 100%;
+  max-width: 430px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--bg-soft);
+  border-radius: 26px 26px 0 0;
+  animation: slideUp 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@media (min-width: 900px) {
+  .calc-form-overlay {
+    align-items: center;
+  }
+  .calc-form-panel {
+    max-width: 440px;
+    border-radius: 22px;
+    animation: swapIn 0.25s ease;
+  }
+}
+
 /* Плейсхолдер-заглушка для фото (диагональная штриховка) */
 .plc {
   background-image: repeating-linear-gradient(
