@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
+/* ============================================================
+   RE:CAR — фирменные токены (из бренд-брифа).
+   Цвета намеренно вынесены в переменные, чтобы не хардкодить
+   их по всему коду. Шрифты подключены через next/font в layout.
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Графит / тёмное */
+  --graphite: #15181e;
+  --graphite-panel: #1c2027;
+  /* Электрик-аква — фирменный акцент (дозированно) */
+  --electric: #17e3c2;
+  --electric-ink: #0c2d27;
+  --electric-deep: #0c9a82;
+  --electric-tint: rgba(23, 227, 194, 0.16);
+  /* Светлое */
+  --white: #ffffff;
+  --bg-soft: #f4f5f7;
+  --panel-soft: #eef0f3;
+  /* Текст */
+  --metallic: #8a9199;
+  --text-muted: #5b636e;
+  --text-on-dark: #b7bdc6;
+  /* Янтарный — ТОЛЬКО акции/сигнальное */
+  --amber: #ff6a2b;
+
+  --font-heading: var(--font-unbounded), system-ui, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope);
+  --font-heading: var(--font-unbounded);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--bg-soft);
+  color: var(--graphite);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Анимации из прототипа */
+@keyframes swapIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Плейсхолдер-заглушка для фото (диагональная штриховка) */
+.plc {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(138, 145, 153, 0.14) 0 10px,
+    rgba(138, 145, 153, 0.05) 10px 20px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 11px ui-monospace, Menlo, monospace;
+  letter-spacing: 0.05em;
+  color: var(--metallic);
 }
